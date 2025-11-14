@@ -383,6 +383,23 @@
             </div>
 
             <div class="form-group">
+                <label for="authScheme">Authorization Scheme</label>
+                <select id="authScheme" onchange="toggleCustomHeaderField()" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <option value="Token">Token (default)</option>
+                    <option value="Bearer">Bearer</option>
+                    <option value="API-Key">API-Key</option>
+                    <option value="Custom">Custom Header</option>
+                </select>
+                <div class="form-help">Select how the API key should be sent in the Authorization header</div>
+            </div>
+
+            <div class="form-group" id="customHeaderGroup" style="display: none;">
+                <label for="customHeaderName">Custom Header Name</label>
+                <input type="text" id="customHeaderName" placeholder="e.g., X-API-Key">
+                <div class="form-help">Name of the custom header (leave blank to use Authorization)</div>
+            </div>
+
+            <div class="form-group">
                 <label for="projectIds">Project IDs (one per line)</label>
                 <textarea id="projectIds" placeholder="project-id-1&#10;project-id-2&#10;project-id-3"></textarea>
                 <div class="form-help">Enter each project ID on a new line</div>
@@ -409,11 +426,15 @@
             const apiKey = localStorage.getItem('deepgram_api_key');
             const projectIds = localStorage.getItem('deepgram_project_ids');
             const projectNames = localStorage.getItem('deepgram_project_names');
+            const authScheme = localStorage.getItem('deepgram_auth_scheme');
+            const customHeaderName = localStorage.getItem('deepgram_custom_header_name');
             
             return {
                 apiKey: apiKey || '',
                 projectIds: projectIds ? JSON.parse(projectIds) : [],
-                projectNames: projectNames ? JSON.parse(projectNames) : []
+                projectNames: projectNames ? JSON.parse(projectNames) : [],
+                authScheme: authScheme || 'Token',
+                customHeaderName: customHeaderName || ''
             };
         }
 
@@ -422,6 +443,8 @@
             const apiKey = document.getElementById('apiKey').value.trim();
             const projectIdsText = document.getElementById('projectIds').value.trim();
             const projectNamesText = document.getElementById('projectNames').value.trim();
+            const authScheme = document.getElementById('authScheme').value;
+            const customHeaderName = document.getElementById('customHeaderName').value.trim();
 
             if (!apiKey) {
                 showError('Please enter your API key');
@@ -439,6 +462,8 @@
             localStorage.setItem('deepgram_api_key', apiKey);
             localStorage.setItem('deepgram_project_ids', JSON.stringify(projectIds));
             localStorage.setItem('deepgram_project_names', JSON.stringify(projectNames));
+            localStorage.setItem('deepgram_auth_scheme', authScheme);
+            localStorage.setItem('deepgram_custom_header_name', customHeaderName);
 
             closeSettings();
             loadDashboard();
@@ -447,9 +472,25 @@
         function showSettings() {
             const settings = loadSettings();
             document.getElementById('apiKey').value = settings.apiKey;
+            document.getElementById('authScheme').value = settings.authScheme;
+            document.getElementById('customHeaderName').value = settings.customHeaderName;
             document.getElementById('projectIds').value = settings.projectIds.join('\n');
             document.getElementById('projectNames').value = settings.projectNames.join('\n');
+            
+            // Show/hide custom header field based on auth scheme
+            toggleCustomHeaderField();
+            
             document.getElementById('settingsModal').classList.add('active');
+        }
+        
+        function toggleCustomHeaderField() {
+            const authScheme = document.getElementById('authScheme').value;
+            const customHeaderGroup = document.getElementById('customHeaderGroup');
+            if (authScheme === 'Custom') {
+                customHeaderGroup.style.display = 'block';
+            } else {
+                customHeaderGroup.style.display = 'none';
+            }
         }
 
         function closeSettings() {
@@ -480,11 +521,22 @@
         }
 
         // Fetch project data from Deepgram API
-        async function fetchProjectData(projectId, apiKey) {
+        async function fetchProjectData(projectId, apiKey, authScheme = 'Token', customHeaderName = '') {
             const headers = {
-                'Authorization': `Token ${apiKey}`,
                 'Content-Type': 'application/json'
             };
+            
+            // Build authorization header based on scheme
+            if (authScheme === 'Custom' && customHeaderName) {
+                // Custom header name with just the API key value
+                headers[customHeaderName] = apiKey;
+            } else if (authScheme === 'Custom') {
+                // Custom scheme but using Authorization header
+                headers['Authorization'] = apiKey;
+            } else {
+                // Standard schemes: Token, Bearer, API-Key
+                headers['Authorization'] = `${authScheme} ${apiKey}`;
+            }
 
             try {
                 // Fetch balances
@@ -695,7 +747,12 @@
                 const projectName = settings.projectNames[i] || `Project ${i + 1}`;
 
                 try {
-                    const data = await fetchProjectData(projectId, settings.apiKey);
+                    const data = await fetchProjectData(
+                        projectId, 
+                        settings.apiKey, 
+                        settings.authScheme, 
+                        settings.customHeaderName
+                    );
                     const metrics = calculateMetrics(data);
                     
                     projectsData.push({
@@ -733,5 +790,7 @@
             }
         });
     </script>
+</body>
+</html>
 </body>
 </html>
