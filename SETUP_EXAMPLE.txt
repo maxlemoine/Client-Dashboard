@@ -1,0 +1,78 @@
+DEEPGRAM BILLING DASHBOARD - SETUP EXAMPLE
+============================================
+
+This file shows you exactly what to enter in the Settings dialog.
+
+STEP 1: Open dashboard.html in your browser
+
+STEP 2: Click the "Settings" button
+
+STEP 3: Fill in the form like this:
+
+
+┌─────────────────────────────────────────────────────┐
+│ Deepgram API Key                                    │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ abc123def456ghi789jkl0mnop                      │ │
+│ └─────────────────────────────────────────────────┘ │
+│ Your API key is stored locally in your browser      │
+└─────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────┐
+│ Project IDs (one per line)                          │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ 12345678-1234-1234-1234-123456789abc           │ │
+│ │ 87654321-4321-4321-4321-cba987654321           │ │
+│ │ abcdef12-3456-7890-abcd-ef1234567890           │ │
+│ └─────────────────────────────────────────────────┘ │
+│ Enter each project ID on a new line                 │
+└─────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────┐
+│ Project Names (optional, one per line)              │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ Acme Corporation                                │ │
+│ │ TechStart Inc                                   │ │
+│ │ Global Solutions Ltd                            │ │
+│ └─────────────────────────────────────────────────┘ │
+│ Friendly names for your projects                    │
+│ (must match order of Project IDs)                   │
+└─────────────────────────────────────────────────────┘
+
+
+STEP 4: Click "Save & Reload"
+
+DONE! Your dashboard will now show all your customer billing info.
+
+
+═══════════════════════════════════════════════════════
+
+WHERE TO FIND YOUR PROJECT IDS:
+
+1. Log into console.deepgram.com
+2. Select a project from the dropdown
+3. The project ID is in the URL or Settings page
+4. Repeat for each customer project
+
+
+WHERE TO GET YOUR API KEY:
+
+1. Log into console.deepgram.com
+2. Go to API Keys section
+3. Create a new key or use existing
+4. Copy the key and paste it in Settings
+
+
+═══════════════════════════════════════════════════════
+
+TIPS:
+
+✓ You can have as many projects as you want
+✓ Project names are optional but make it easier to identify customers
+✓ The order of names must match the order of IDs
+✓ Your data is stored only in your browser, nowhere else
+✓ You can update Settings at any time by clicking the Settings button
+
+═══════════════════════════════════════════════════════
