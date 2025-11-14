@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Billing Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e0e7ff;
+            color: #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #c7d2fe;
+        }
+
+        .last-updated {
+            color: #666;
+            font-size: 14px;
+            margin-left: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 25px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+        }
+
+        .status-healthy {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+        }
+
+        .status-warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .status-critical {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+            padding-top: 5px;
+        }
+
+        .project-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .project-id {
+            font-size: 12px;
+            color: #6b7280;
+            font-family: 'Courier New', monospace;
+        }
+
+        .usage-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .badge-healthy {
+            background: #10b981;
+        }
+
+        .badge-warning {
+            background: #f59e0b;
+        }
+
+        .badge-critical {
+            background: #ef4444;
+        }
+
+        .metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .metric-value.critical {
+            color: #ef4444;
+        }
+
+        .metric-value.warning {
+            color: #f59e0b;
+        }
+
+        .progress-bar-container {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .progress-healthy {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+        }
+
+        .progress-warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .progress-critical {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .settings-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-modal.active {
+            display: flex;
+        }
+
+        .settings-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .settings-content h2 {
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .last-updated {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Customer Billing Dashboard</h1>
+            <p style="color: #6b7280; margin-top: 5px;">Track customer credits, usage, and burn rate</p>
+            
+            <div class="header-controls">
+                <button class="btn btn-primary" onclick="loadDashboard()">Refresh Data</button>
+                <button class="btn btn-secondary" onclick="showSettings()">Settings</button>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+                    <span style="font-size: 14px; color: #374151;">Auto-refresh (5 min)</span>
+                </label>
+                <span class="last-updated" id="lastUpdated"></span>
+            </div>
+        </div>
+
+        <div id="errorContainer"></div>
+        <div id="dashboardContent" class="loading">Loading...</div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="settings-modal">
+        <div class="settings-content">
+            <h2>Dashboard Settings</h2>
+            
+            <div class="form-group">
+                <label for="apiKey">Deepgram API Key</label>
+                <input type="password" id="apiKey" placeholder="Enter your API key">
+                <div class="form-help">Your API key is stored locally in your browser</div>
+            </div>
+
+            <div class="form-group">
+                <label for="projectIds">Project IDs (one per line)</label>
+                <textarea id="projectIds" placeholder="project-id-1&#10;project-id-2&#10;project-id-3"></textarea>
+                <div class="form-help">Enter each project ID on a new line</div>
+            </div>
+
+            <div class="form-group">
+                <label for="projectNames">Project Names (optional, one per line)</label>
+                <textarea id="projectNames" placeholder="Customer A&#10;Customer B&#10;Customer C"></textarea>
+                <div class="form-help">Friendly names for your projects (must match order of Project IDs)</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Save & Reload</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+
+        // Load settings from localStorage
+        function loadSettings() {
+            const apiKey = localStorage.getItem('deepgram_api_key');
+            const projectIds = localStorage.getItem('deepgram_project_ids');
+            const projectNames = localStorage.getItem('deepgram_project_names');
+            
+            return {
+                apiKey: apiKey || '',
+                projectIds: projectIds ? JSON.parse(projectIds) : [],
+                projectNames: projectNames ? JSON.parse(projectNames) : []
+            };
+        }
+
+        // Save settings to localStorage
+        function saveSettings() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const projectIdsText = document.getElementById('projectIds').value.trim();
+            const projectNamesText = document.getElementById('projectNames').value.trim();
+
+            if (!apiKey) {
+                showError('Please enter your API key');
+                return;
+            }
+
+            if (!projectIdsText) {
+                showError('Please enter at least one project ID');
+                return;
+            }
+
+            const projectIds = projectIdsText.split('\n').map(id => id.trim()).filter(id => id);
+            const projectNames = projectNamesText.split('\n').map(name => name.trim()).filter(name => name);
+
+            localStorage.setItem('deepgram_api_key', apiKey);
+            localStorage.setItem('deepgram_project_ids', JSON.stringify(projectIds));
+            localStorage.setItem('deepgram_project_names', JSON.stringify(projectNames));
+
+            closeSettings();
+            loadDashboard();
+        }
+
+        function showSettings() {
+            const settings = loadSettings();
+            document.getElementById('apiKey').value = settings.apiKey;
+            document.getElementById('projectIds').value = settings.projectIds.join('\n');
+            document.getElementById('projectNames').value = settings.projectNames.join('\n');
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `<div class="error">${message}</div>`;
+            setTimeout(() => {
+                errorContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        function toggleAutoRefresh() {
+            const enabled = document.getElementById('autoRefresh').checked;
+            
+            if (enabled) {
+                autoRefreshInterval = setInterval(() => {
+                    loadDashboard();
+                }, 5 * 60 * 1000); // 5 minutes
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        // Fetch project data from Deepgram API
+        async function fetchProjectData(projectId, apiKey) {
+            const headers = {
+                'Authorization': `Token ${apiKey}`,
+                'Content-Type': 'application/json'
+            };
+
+            try {
+                // Fetch balances
+                const balancesResponse = await fetch(
+                    `https://api.deepgram.com/v1/projects/${projectId}/balances`,
+                    { headers }
+                );
+
+                if (!balancesResponse.ok) {
+                    throw new Error(`Failed to fetch balances: ${balancesResponse.status}`);
+                }
+
+                const balancesData = await balancesResponse.json();
+
+                // Fetch usage breakdown for the last 30 days
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 30);
+
+                const usageResponse = await fetch(
+                    `https://api.deepgram.com/v1/projects/${projectId}/usage/breakdown?start=${startDate.toISOString()}&end=${endDate.toISOString()}`,
+                    { headers }
+                );
+
+                if (!usageResponse.ok) {
+                    throw new Error(`Failed to fetch usage: ${usageResponse.status}`);
+                }
+
+                const usageData = await usageResponse.json();
+
+                return {
+                    balances: balancesData,
+                    usage: usageData
+                };
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        // Calculate metrics from API data
+        function calculateMetrics(data) {
+            const balances = data.balances.balances || [];
+            
+            // Sum up all balances
+            const totalBalance = balances.reduce((sum, balance) => {
+                return sum + parseFloat(balance.amount || 0);
+            }, 0);
+
+            // Calculate total usage from the breakdown
+            let totalUsage = 0;
+            if (data.usage && data.usage.results) {
+                totalUsage = data.usage.results.reduce((sum, result) => {
+                    return sum + parseFloat(result.total_usd || 0);
+                }, 0);
+            }
+
+            // Calculate burn rate (usage per day over last 30 days)
+            const burnRate = totalUsage / 30;
+
+            // Calculate days until credits reach 0
+            const daysRemaining = burnRate > 0 ? totalBalance / burnRate : Infinity;
+
+            // Calculate projected date when credits reach 0
+            let projectedDate = 'N/A';
+            if (daysRemaining !== Infinity && daysRemaining > 0) {
+                const projDate = new Date();
+                projDate.setDate(projDate.getDate() + Math.floor(daysRemaining));
+                projectedDate = projDate.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            }
+
+            // Get contracted amount (initial balance from first balance entry)
+            // This is an estimate - you might need to adjust based on your data
+            let contractedAmount = totalBalance + totalUsage;
+            
+            // Calculate usage percentage
+            const usagePercent = contractedAmount > 0 ? (totalUsage / contractedAmount) * 100 : 0;
+
+            return {
+                contractedAmount: contractedAmount,
+                currentBalance: totalBalance,
+                totalUsage: totalUsage,
+                usagePercent: usagePercent,
+                burnRate: burnRate,
+                daysRemaining: daysRemaining === Infinity ? 'N/A' : Math.floor(daysRemaining),
+                projectedDate: projectedDate
+            };
+        }
+
+        // Determine status based on usage percentage
+        function getStatus(usagePercent) {
+            if (usagePercent < 60) return 'healthy';
+            if (usagePercent < 80) return 'warning';
+            return 'critical';
+        }
+
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        // Render dashboard
+        function renderDashboard(projectsData) {
+            const container = document.getElementById('dashboardContent');
+            
+            if (projectsData.length === 0) {
+                container.innerHTML = '<div class="no-data">No projects configured. Click Settings to add your projects.</div>';
+                return;
+            }
+
+            const html = `
+                <div class="dashboard-grid">
+                    ${projectsData.map(project => {
+                        const status = getStatus(project.metrics.usagePercent);
+                        const statusText = status === 'healthy' ? 'Healthy' : 
+                                         status === 'warning' ? 'Warning' : 'Critical';
+                        
+                        return `
+                            <div class="project-card">
+                                <div class="status-bar status-${status}"></div>
+                                
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-name">${project.name}</div>
+                                        <div class="project-id">${project.id}</div>
+                                    </div>
+                                    <div class="usage-badge badge-${status}">
+                                        ${statusText}
+                                    </div>
+                                </div>
+
+                                <div class="metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">Contracted Amount</span>
+                                        <span class="metric-value">${formatCurrency(project.metrics.contractedAmount)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Current Balance</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : ''}">${formatCurrency(project.metrics.currentBalance)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Total Usage (30d)</span>
+                                        <span class="metric-value">${formatCurrency(project.metrics.totalUsage)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Burn Rate (per day)</span>
+                                        <span class="metric-value">${formatCurrency(project.metrics.burnRate)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Days Until Empty</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : status === 'warning' ? 'warning' : ''}">
+                                            ${project.metrics.daysRemaining}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Projected Empty Date</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : ''}">${project.metrics.projectedDate}</span>
+                                    </div>
+                                </div>
+
+                                <div class="progress-bar-container">
+                                    <div class="progress-label">
+                                        <span>Credits Used</span>
+                                        <span><strong>${project.metrics.usagePercent.toFixed(1)}%</strong></span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill progress-${status}" style="width: ${Math.min(project.metrics.usagePercent, 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Main function to load dashboard
+        async function loadDashboard() {
+            const settings = loadSettings();
+            
+            if (!settings.apiKey || settings.projectIds.length === 0) {
+                document.getElementById('dashboardContent').innerHTML = 
+                    '<div class="no-data">Please configure your API key and project IDs in Settings.</div>';
+                return;
+            }
+
+            document.getElementById('dashboardContent').innerHTML = '<div class="loading">Loading project data...</div>';
+            document.getElementById('errorContainer').innerHTML = '';
+
+            const projectsData = [];
+            const errors = [];
+
+            for (let i = 0; i < settings.projectIds.length; i++) {
+                const projectId = settings.projectIds[i];
+                const projectName = settings.projectNames[i] || `Project ${i + 1}`;
+
+                try {
+                    const data = await fetchProjectData(projectId, settings.apiKey);
+                    const metrics = calculateMetrics(data);
+                    
+                    projectsData.push({
+                        id: projectId,
+                        name: projectName,
+                        metrics: metrics,
+                        data: data
+                    });
+                } catch (error) {
+                    errors.push(`Failed to load ${projectName} (${projectId}): ${error.message}`);
+                }
+            }
+
+            if (errors.length > 0) {
+                showError(errors.join('<br>'));
+            }
+
+            renderDashboard(projectsData);
+
+            // Update last updated time
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = 
+                `Last updated: ${now.toLocaleTimeString()}`;
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+        });
+
+        // Close settings modal when clicking outside
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'settingsModal') {
+                closeSettings();
+            }
+        });
+    </script>
+</body>
+</html>
