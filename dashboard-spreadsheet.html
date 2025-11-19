@@ -742,14 +742,21 @@
 
                     // Parse the data
                     customersData = jsonData.map(row => {
+                        // Helper to safely parse numbers
+                        const safeParseFloat = (value, defaultValue = 0) => {
+                            if (value === null || value === undefined || value === '') return defaultValue;
+                            const parsed = parseFloat(value);
+                            return isNaN(parsed) ? defaultValue : parsed;
+                        };
+                        
                         const customer = {
                             projectId: row['Project ID'] || row['project_id'] || '',
                             companyName: row['Company Name'] || row['company_name'] || '',
-                            arr: parseFloat(row['ARR'] || row['arr'] || 0),
-                            startingBalance: parseFloat(row['Starting Balance'] || row['starting_balance'] || 0),
+                            arr: safeParseFloat(row['ARR'] || row['arr']),
+                            startingBalance: safeParseFloat(row['Starting Balance'] || row['starting_balance']),
                             startDate: row['Start Date'] || row['start_date'] || '',
-                            creditsRemaining: parseFloat(row['Total Credits Remaining'] || row['credits_remaining'] || row['Total Credits'] || 0),
-                            perHourRate: parseFloat(row['Per Hour Rate'] || row['per_hour_rate'] || 0),
+                            creditsRemaining: safeParseFloat(row['Total Credits Remaining'] || row['credits_remaining'] || row['Total Credits']),
+                            perHourRate: safeParseFloat(row['Per Hour Rate'] || row['per_hour_rate']),
                             sfdcLink: row['SFDC Link'] || row['sfdc_link'] || '',
                             monthlyUsage: {}
                         };
@@ -761,7 +768,8 @@
                                 // Format: 2025-06, 2025-07, etc.
                                 const value = row[key];
                                 if (value !== null && value !== undefined && value !== '') {
-                                    customer.monthlyUsage[trimmedKey] = parseFloat(value);
+                                    const hours = safeParseFloat(value);
+                                    customer.monthlyUsage[trimmedKey] = hours;
                                 }
                             } else if (trimmedKey.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i)) {
                                 // Format: Jan 2025, Feb 2025, etc.
@@ -769,7 +777,8 @@
                                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                                 const value = row[key];
                                 if (value !== null && value !== undefined && value !== '') {
-                                    customer.monthlyUsage[monthKey] = parseFloat(value);
+                                    const hours = safeParseFloat(value);
+                                    customer.monthlyUsage[monthKey] = hours;
                                 }
                             }
                         }
@@ -779,11 +788,17 @@
 
                     saveDataToStorage();
                     renderDashboard();
+                    
+                    // Debug: Show what was imported
+                    console.log('Imported customers:', customersData);
+                    console.log('First customer monthly usage:', customersData[0]?.monthlyUsage);
+                    
                     showMessage(`✅ Successfully imported ${customersData.length} customer(s)!`, 'success');
                     
                     // Reset file input
                     event.target.value = '';
                 } catch (error) {
+                    console.error('Import error:', error);
                     showMessage(`Error reading file: ${error.message}`, 'error');
                 }
             };
@@ -882,7 +897,18 @@
             // Get all months sorted
             const months = Object.keys(customer.monthlyUsage).sort();
             
+            // Debug logging
+            if (customer.companyName === '[24]7.ai' || customer.companyName === 'Ada') {
+                console.log(`Debug ${customer.companyName}:`, {
+                    months: months,
+                    monthlyUsage: customer.monthlyUsage,
+                    perHourRate: customer.perHourRate,
+                    creditsRemaining: customer.creditsRemaining
+                });
+            }
+            
             if (months.length === 0 || !customer.perHourRate) {
+                console.warn(`No data for ${customer.companyName}: months=${months.length}, rate=${customer.perHourRate}`);
                 return {
                     totalHoursUsed: 0,
                     totalCostUsed: 0,
