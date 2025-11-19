@@ -561,6 +561,7 @@
                             startingBalance: parseFloat(row['Starting Balance'] || row['starting_balance'] || 0),
                             startDate: row['Start Date'] || row['start_date'] || '',
                             creditsRemaining: parseFloat(row['Total Credits Remaining'] || row['credits_remaining'] || row['Total Credits'] || 0),
+                            perHourRate: parseFloat(row['Per Hour Rate'] || row['per_hour_rate'] || 0),
                             sfdcLink: row['SFDC Link'] || row['sfdc_link'] || '',
                             monthlyUsage: {}
                         };
@@ -604,13 +605,14 @@
                     'Starting Balance': 100000,
                     'Start Date': '2025-01-01',
                     'Total Credits Remaining': 45000,
+                    'Per Hour Rate': 5.50,
                     'SFDC Link': 'https://salesforce.com/account/123',
-                    '2025-06': 8000,
-                    '2025-07': 8500,
-                    '2025-08': 9000,
-                    '2025-09': 9500,
-                    '2025-10': 10000,
-                    '2025-11': 6500
+                    '2025-06': 1200,
+                    '2025-07': 1280,
+                    '2025-08': 1350,
+                    '2025-09': 1420,
+                    '2025-10': 1500,
+                    '2025-11': 950
                 },
                 {
                     'Project ID': 'proj-def456',
@@ -619,13 +621,14 @@
                     'Starting Balance': 150000,
                     'Start Date': '2025-02-15',
                     'Total Credits Remaining': 75000,
+                    'Per Hour Rate': 8.00,
                     'SFDC Link': 'https://salesforce.com/account/456',
-                    '2025-06': 12000,
-                    '2025-07': 13000,
-                    '2025-08': 14000,
-                    '2025-09': 15000,
-                    '2025-10': 16000,
-                    '2025-11': 9000
+                    '2025-06': 1800,
+                    '2025-07': 1900,
+                    '2025-08': 2000,
+                    '2025-09': 2100,
+                    '2025-10': 2200,
+                    '2025-11': 1400
                 }
             ];
 
@@ -649,6 +652,7 @@
                     'Starting Balance': customer.startingBalance,
                     'Start Date': customer.startDate,
                     'Total Credits Remaining': customer.creditsRemaining,
+                    'Per Hour Rate': customer.perHourRate,
                     'SFDC Link': customer.sfdcLink
                 };
 
@@ -683,25 +687,31 @@
             // Get all months sorted
             const months = Object.keys(customer.monthlyUsage).sort();
             
-            if (months.length === 0) {
+            if (months.length === 0 || !customer.perHourRate) {
                 return {
-                    totalUsed: 0,
+                    totalHoursUsed: 0,
+                    totalCostUsed: 0,
                     remainingCredits: customer.creditsRemaining,
                     usagePercent: 0,
-                    dailyRate: 0,
+                    dailyHours: 0,
+                    dailyCost: 0,
                     dodGrowthRate: 0,
                     projectedDaysRemaining: 'N/A',
                     projectedDepletionDate: 'N/A',
-                    startingBalance: customer.startingBalance || 0
+                    startingBalance: customer.startingBalance || 0,
+                    perHourRate: customer.perHourRate || 0
                 };
             }
 
-            // Calculate total used from monthly data
-            const totalUsedFromMonthly = Object.values(customer.monthlyUsage).reduce((sum, val) => sum + val, 0);
+            // Calculate total hours used from monthly data
+            const totalHoursUsed = Object.values(customer.monthlyUsage).reduce((sum, val) => sum + val, 0);
+            
+            // Calculate total cost used (hours × rate)
+            const totalCostUsed = totalHoursUsed * customer.perHourRate;
             
             // Use creditsRemaining from spreadsheet (as of Nov 18, 2025)
             const remainingCredits = customer.creditsRemaining;
-            const startingBalance = customer.startingBalance || (remainingCredits + totalUsedFromMonthly);
+            const startingBalance = customer.startingBalance || 0;
             const usagePercent = startingBalance > 0 ? ((startingBalance - remainingCredits) / startingBalance) * 100 : 0;
 
             // Helper function to get days in a month
@@ -710,10 +720,10 @@
                 return new Date(year, month, 0).getDate();
             }
 
-            // Calculate daily rate for each month
-            const dailyRates = [];
+            // Calculate daily HOURS for each month
+            const dailyHoursData = [];
             for (let month of months) {
-                const monthlyTotal = customer.monthlyUsage[month];
+                const monthlyHours = customer.monthlyUsage[month];
                 let daysInPeriod;
                 
                 // Special handling for November 2025 (partial month - only Nov 1-18)
@@ -723,24 +733,24 @@
                     daysInPeriod = getDaysInMonth(month);
                 }
                 
-                const dailyRate = monthlyTotal / daysInPeriod;
-                dailyRates.push({
+                const dailyHours = monthlyHours / daysInPeriod;
+                dailyHoursData.push({
                     month: month,
-                    dailyRate: dailyRate,
-                    monthlyTotal: monthlyTotal,
+                    dailyHours: dailyHours,
+                    monthlyHours: monthlyHours,
                     days: daysInPeriod
                 });
             }
 
-            // Calculate day-over-day (DoD) growth rate from daily rates
+            // Calculate day-over-day (DoD) growth rate based on HOURS
             let dodGrowthRate = 0;
-            if (dailyRates.length >= 2) {
+            if (dailyHoursData.length >= 2) {
                 const growthRates = [];
-                for (let i = 1; i < dailyRates.length; i++) {
-                    const prevDailyRate = dailyRates[i - 1].dailyRate;
-                    const currDailyRate = dailyRates[i].dailyRate;
-                    if (prevDailyRate > 0) {
-                        const growth = ((currDailyRate - prevDailyRate) / prevDailyRate) * 100;
+                for (let i = 1; i < dailyHoursData.length; i++) {
+                    const prevDailyHours = dailyHoursData[i - 1].dailyHours;
+                    const currDailyHours = dailyHoursData[i].dailyHours;
+                    if (prevDailyHours > 0) {
+                        const growth = ((currDailyHours - prevDailyHours) / prevDailyHours) * 100;
                         growthRates.push(growth);
                     }
                 }
@@ -749,23 +759,28 @@
                     : 0;
             }
 
-            // Current daily rate (most recent month)
-            const currentDailyRate = dailyRates[dailyRates.length - 1].dailyRate;
+            // Current daily hours (most recent month)
+            const currentDailyHours = dailyHoursData[dailyHoursData.length - 1].dailyHours;
+            
+            // Current daily cost (hours × rate)
+            const currentDailyCost = currentDailyHours * customer.perHourRate;
 
-            // Project when credits will run out using daily rates with DoD growth
+            // Project when credits will run out
+            // Formula: Days until empty = Remaining Credits ÷ ((Current Daily Hours × (1 + Daily Growth Rate)) × per hour rate)
             let projectedDaysRemaining = 'N/A';
             let projectedDepletionDate = 'N/A';
 
-            if (currentDailyRate > 0 && remainingCredits > 0) {
+            if (currentDailyHours > 0 && remainingCredits > 0 && customer.perHourRate > 0) {
                 let remaining = remainingCredits;
-                let dailyRate = currentDailyRate;
+                let dailyHours = currentDailyHours;
                 let daysCount = 0;
                 const dailyGrowthMultiplier = 1 + (dodGrowthRate / 100);
                 
                 // Project day by day until credits run out (max 3650 days = 10 years)
                 while (remaining > 0 && daysCount < 3650) {
-                    remaining -= dailyRate;
-                    dailyRate = dailyRate * dailyGrowthMultiplier;
+                    const dailyCost = dailyHours * customer.perHourRate;
+                    remaining -= dailyCost;
+                    dailyHours = dailyHours * dailyGrowthMultiplier;
                     daysCount++;
                 }
                 
@@ -782,14 +797,17 @@
             }
 
             return {
-                totalUsed: startingBalance - remainingCredits,
+                totalHoursUsed,
+                totalCostUsed,
                 remainingCredits,
                 usagePercent,
-                dailyRate: currentDailyRate,
+                dailyHours: currentDailyHours,
+                dailyCost: currentDailyCost,
                 dodGrowthRate,
                 projectedDaysRemaining,
                 projectedDepletionDate,
-                startingBalance
+                startingBalance,
+                perHourRate: customer.perHourRate
             };
         }
 
@@ -837,10 +855,10 @@
                 return;
             }
 
-            if (editingField === 'startingBalance' || editingField === 'creditsRemaining' || editingField === 'arr') {
+            if (editingField === 'startingBalance' || editingField === 'creditsRemaining' || editingField === 'arr' || editingField === 'perHourRate') {
                 customersData[editingCustomer][editingField] = newValue;
             } else {
-                // It's a monthly usage value
+                // It's a monthly usage value (hours)
                 customersData[editingCustomer].monthlyUsage[editingField] = newValue;
             }
 
@@ -851,24 +869,24 @@
         }
 
         function addNewMonth(customerIndex) {
-            const monthInput = prompt('Enter month (YYYY-MM format, e.g., 2024-11):');
+            const monthInput = prompt('Enter month (YYYY-MM format, e.g., 2025-11):');
             if (!monthInput) return;
 
             if (!monthInput.match(/^\d{4}-\d{2}$/)) {
-                alert('Invalid format. Please use YYYY-MM format (e.g., 2024-11)');
+                alert('Invalid format. Please use YYYY-MM format (e.g., 2025-11)');
                 return;
             }
 
-            const usageInput = prompt('Enter usage amount for ' + monthInput + ':');
+            const usageInput = prompt('Enter HOURS used for ' + monthInput + ':');
             if (usageInput === null) return;
 
-            const usage = parseFloat(usageInput);
-            if (isNaN(usage)) {
+            const hours = parseFloat(usageInput);
+            if (isNaN(hours)) {
                 alert('Please enter a valid number');
                 return;
             }
 
-            customersData[customerIndex].monthlyUsage[monthInput] = usage;
+            customersData[customerIndex].monthlyUsage[monthInput] = hours;
             saveDataToStorage();
             renderDashboard();
             showMessage('✅ Month added successfully!', 'success');
@@ -883,9 +901,10 @@
                         <h2>No Customer Data</h2>
                         <p>Import your customer billing data from a CSV or Excel file to get started.</p>
                         <p><strong>Your spreadsheet should include:</strong><br>
-                        Project ID, Company Name, ARR, Starting Balance, Start Date, Total Credits Remaining, SFDC Link, and monthly usage columns (format: YYYY-MM)</p>
+                        Project ID, Company Name, ARR, Starting Balance, Start Date, Total Credits Remaining, Per Hour Rate, SFDC Link, and monthly usage columns (format: YYYY-MM)</p>
                         <p style="margin-top: 10px; font-size: 14px; color: #6b7280;">
-                        <strong>Monthly columns:</strong> Use YYYY-MM format (e.g., 2025-06, 2025-11)<br>
+                        <strong>Monthly columns contain HOURS used</strong> (not dollars)<br>
+                        Use YYYY-MM format (e.g., 2025-06, 2025-11)<br>
                         Note: 2025-11 should be partial (Nov 1-18 only, 18 days)</p>
                         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
                             <div class="upload-icon">📊</div>
@@ -938,11 +957,6 @@
                                     </div>
                                     
                                     <div class="metric">
-                                        <span class="metric-label">Credits Used</span>
-                                        <span class="metric-value">${formatCurrency(metrics.totalUsed)}</span>
-                                    </div>
-                                    
-                                    <div class="metric">
                                         <span class="metric-label">Remaining Credits</span>
                                         <span class="metric-value metric-value editable ${status === 'critical' || status === 'orange' ? 'critical' : ''}" onclick="openEditModal(${index}, 'creditsRemaining', ${customer.creditsRemaining}, 'Remaining Credits')">
                                             ${formatCurrency(metrics.remainingCredits)}
@@ -950,8 +964,30 @@
                                     </div>
                                     
                                     <div class="metric">
-                                        <span class="metric-label">Daily Run Rate</span>
-                                        <span class="metric-value">${formatCurrency(metrics.dailyRate)}/day</span>
+                                        <span class="metric-label">Per Hour Rate</span>
+                                        <span class="metric-value metric-value editable" onclick="openEditModal(${index}, 'perHourRate', ${customer.perHourRate}, 'Per Hour Rate')">
+                                            ${formatCurrency(customer.perHourRate)}/hr
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Total Hours Used</span>
+                                        <span class="metric-value">${metrics.totalHoursUsed.toLocaleString()} hrs</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Total Cost Used</span>
+                                        <span class="metric-value">${formatCurrency(metrics.totalCostUsed)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Daily Hours</span>
+                                        <span class="metric-value">${metrics.dailyHours.toFixed(1)} hrs/day</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Daily Cost</span>
+                                        <span class="metric-value">${formatCurrency(metrics.dailyCost)}/day</span>
                                     </div>
                                     
                                     <div class="metric">
@@ -974,14 +1010,14 @@
 
                                 <div class="monthly-usage">
                                     <div class="monthly-usage-title">
-                                        Recent Monthly Usage
+                                        Recent Monthly Usage (Hours)
                                         <button class="btn btn-secondary" style="float: right; padding: 4px 10px; font-size: 11px;" onclick="addNewMonth(${index})">+ Add Month</button>
                                     </div>
                                     ${recentMonths.map(month => `
                                         <div class="month-row">
                                             <span class="month-label">${month}</span>
-                                            <span class="month-value" onclick="openEditModal(${index}, '${month}', ${customer.monthlyUsage[month]}, '${month} Usage')">
-                                                ${formatCurrency(customer.monthlyUsage[month])}
+                                            <span class="month-value" onclick="openEditModal(${index}, '${month}', ${customer.monthlyUsage[month]}, '${month} Hours')">
+                                                ${customer.monthlyUsage[month].toLocaleString()} hrs
                                             </span>
                                         </div>
                                     `).join('')}
