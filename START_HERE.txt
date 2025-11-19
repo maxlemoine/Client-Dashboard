@@ -1,0 +1,62 @@
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║        🚀 HOW TO START THE BILLING DASHBOARD 🚀           ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+⚠️  IMPORTANT: Don't just double-click "dashboard.html"!
+    It will cause a "Failed to fetch" error.
+
+
+✅  CORRECT WAY TO START:
+
+    1. Double-click this file: start-dashboard.command
+    
+    2. If macOS shows a security warning, click "Open"
+    
+    3. A Terminal window will open and stay open
+       (This is normal - don't close it!)
+    
+    4. Your browser will automatically open the dashboard
+    
+    5. When done, press Ctrl+C in the Terminal window
+
+
+═══════════════════════════════════════════════════════════
+
+WHY THIS IS NEEDED:
+
+Modern browsers block API requests from files opened directly 
+from your computer (file:// URLs) for security reasons. 
+
+The start-dashboard.command script runs a tiny web server on 
+your computer (only you can access it) that allows the 
+dashboard to work properly.
+
+
+═══════════════════════════════════════════════════════════
+
+TROUBLESHOOTING:
+
+❌ "Permission denied" error?
+   → Right-click start-dashboard.command
+   → Select "Open"
+   → Click "Open" in the dialog
+
+❌ Nothing happens when double-clicking?
+   → Open Terminal app
+   → Type: cd ~/billing-dashboard
+   → Type: python3 -m http.server 8000
+   → Open browser to: http://localhost:8000/dashboard.html
+
+❌ Script says "Python is not installed"?
+   → Install Python from python.org
+   → Or use Chrome with CORS disabled (see README.md)
+
+
+═══════════════════════════════════════════════════════════
+
+For detailed documentation, see README.md
+
+═══════════════════════════════════════════════════════════
+
