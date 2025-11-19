@@ -248,4 +248,3 @@ This dashboard is provided as-is for your use. Feel free to modify it to suit yo
 ---
 
 **Need help?** Open the `dashboard.html` file in a text editor to customize or troubleshoot.
-
