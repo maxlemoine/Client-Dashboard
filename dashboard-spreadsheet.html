@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Billing Dashboard - Spreadsheet Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e0e7ff;
+            color: #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #c7d2fe;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .info-banner {
+            background: #e0e7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #10b981;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+        }
+
+        .status-healthy {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+        }
+
+        .status-warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .status-critical {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+            padding-top: 5px;
+        }
+
+        .project-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .project-id {
+            font-size: 12px;
+            color: #6b7280;
+            font-family: 'Courier New', monospace;
+        }
+
+        .sfdc-link {
+            font-size: 12px;
+            color: #667eea;
+            text-decoration: none;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .sfdc-link:hover {
+            text-decoration: underline;
+        }
+
+        .usage-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .badge-healthy {
+            background: #10b981;
+        }
+
+        .badge-warning {
+            background: #f59e0b;
+        }
+
+        .badge-critical {
+            background: #ef4444;
+        }
+
+        .metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .metric-value.critical {
+            color: #ef4444;
+        }
+
+        .metric-value.warning {
+            color: #f59e0b;
+        }
+
+        .metric-value.editable {
+            cursor: pointer;
+            border-bottom: 2px dashed #667eea;
+        }
+
+        .metric-value.editable:hover {
+            background: #e0e7ff;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        .monthly-usage {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .monthly-usage-title {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .month-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .month-label {
+            color: #6b7280;
+        }
+
+        .month-value {
+            font-weight: 600;
+            color: #1f2937;
+            cursor: pointer;
+            border-bottom: 1px dashed #667eea;
+        }
+
+        .month-value:hover {
+            background: #e0e7ff;
+            padding: 0 5px;
+            border-radius: 3px;
+        }
+
+        .progress-bar-container {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .progress-healthy {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+        }
+
+        .progress-warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .progress-critical {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .edit-modal.active {
+            display: flex;
+        }
+
+        .edit-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .edit-content h2 {
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 40px;
+            color: #6b7280;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .no-data h2 {
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+
+        .no-data p {
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .upload-area {
+            border: 3px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f9fafb;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Customer Billing Dashboard</h1>
+            <p style="color: #6b7280; margin-top: 5px;">Import your customer data and track credit usage & projections</p>
+            
+            <div class="header-controls">
+                <div class="file-input-wrapper">
+                    <button class="btn btn-primary">📁 Import CSV/Excel</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFileUpload(event)">
+                </div>
+                <button class="btn btn-secondary" onclick="downloadTemplate()">📥 Download Template</button>
+                <button class="btn btn-success" onclick="exportData()">💾 Export Data</button>
+                <button class="btn btn-danger" onclick="clearAllData()" style="margin-left: auto;">🗑️ Clear All Data</button>
+            </div>
+        </div>
+
+        <div id="messageContainer"></div>
+        <div id="dashboardContent"></div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="edit-modal">
+        <div class="edit-content">
+            <h2 id="editModalTitle">Edit Value</h2>
+            
+            <div class="form-group">
+                <label id="editModalLabel">Value</label>
+                <input type="number" id="editModalInput" step="0.01">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let customersData = [];
+        let editingCustomer = null;
+        let editingField = null;
+
+        // Load data from localStorage on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataFromStorage();
+            renderDashboard();
+        });
+
+        function loadDataFromStorage() {
+            const stored = localStorage.getItem('billing_dashboard_data');
+            if (stored) {
+                customersData = JSON.parse(stored);
+            }
+        }
+
+        function saveDataToStorage() {
+            localStorage.setItem('billing_dashboard_data', JSON.stringify(customersData));
+        }
+
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('messageContainer');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info-banner';
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                    if (jsonData.length === 0) {
+                        showMessage('No data found in file', 'error');
+                        return;
+                    }
+
+                    // Parse the data
+                    customersData = jsonData.map(row => {
+                        const customer = {
+                            projectId: row['Project ID'] || row['project_id'] || '',
+                            companyName: row['Company Name'] || row['company_name'] || '',
+                            arr: parseFloat(row['ARR'] || row['arr'] || 0),
+                            totalCredits: parseFloat(row['Total Credits'] || row['total_credits'] || 0),
+                            sfdcLink: row['SFDC Link'] || row['sfdc_link'] || '',
+                            monthlyUsage: {}
+                        };
+
+                        // Parse monthly usage columns
+                        for (let key in row) {
+                            if (key.match(/^\d{4}-\d{2}$/)) {
+                                // Format: 2024-01, 2024-02, etc.
+                                customer.monthlyUsage[key] = parseFloat(row[key] || 0);
+                            } else if (key.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i)) {
+                                // Format: Jan 2024, Feb 2024, etc.
+                                const date = new Date(key);
+                                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                                customer.monthlyUsage[monthKey] = parseFloat(row[key] || 0);
+                            }
+                        }
+
+                        return customer;
+                    });
+
+                    saveDataToStorage();
+                    renderDashboard();
+                    showMessage(`✅ Successfully imported ${customersData.length} customer(s)!`, 'success');
+                    
+                    // Reset file input
+                    event.target.value = '';
+                } catch (error) {
+                    showMessage(`Error reading file: ${error.message}`, 'error');
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function downloadTemplate() {
+            const template = [
+                {
+                    'Project ID': 'proj-abc123',
+                    'Company Name': 'Acme Corporation',
+                    'ARR': 50000,
+                    'Total Credits': 100000,
+                    'SFDC Link': 'https://salesforce.com/account/123',
+                    '2024-01': 5000,
+                    '2024-02': 5500,
+                    '2024-03': 6000,
+                    '2024-04': 6500,
+                    '2024-05': 7000,
+                    '2024-06': 7500
+                },
+                {
+                    'Project ID': 'proj-def456',
+                    'Company Name': 'TechStart Inc',
+                    'ARR': 75000,
+                    'Total Credits': 150000,
+                    'SFDC Link': 'https://salesforce.com/account/456',
+                    '2024-01': 8000,
+                    '2024-02': 8500,
+                    '2024-03': 9000,
+                    '2024-04': 9500,
+                    '2024-05': 10000,
+                    '2024-06': 10500
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+            XLSX.writeFile(wb, 'billing_dashboard_template.xlsx');
+        }
+
+        function exportData() {
+            if (customersData.length === 0) {
+                showMessage('No data to export', 'error');
+                return;
+            }
+
+            const exportData = customersData.map(customer => {
+                const row = {
+                    'Project ID': customer.projectId,
+                    'Company Name': customer.companyName,
+                    'ARR': customer.arr,
+                    'Total Credits': customer.totalCredits,
+                    'SFDC Link': customer.sfdcLink
+                };
+
+                // Add monthly usage columns
+                for (let month in customer.monthlyUsage) {
+                    row[month] = customer.monthlyUsage[month];
+                }
+
+                return row;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Customers');
+            XLSX.writeFile(wb, `billing_dashboard_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showMessage('✅ Data exported successfully!', 'success');
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                customersData = [];
+                saveDataToStorage();
+                renderDashboard();
+                showMessage('All data cleared', 'success');
+            }
+        }
+
+        function calculateMetrics(customer) {
+            // Get all months sorted
+            const months = Object.keys(customer.monthlyUsage).sort();
+            
+            if (months.length === 0) {
+                return {
+                    totalUsed: 0,
+                    remainingCredits: customer.totalCredits,
+                    usagePercent: 0,
+                    momGrowthRate: 0,
+                    projectedMonthsRemaining: 'N/A',
+                    projectedDepletionDate: 'N/A',
+                    lastMonthUsage: 0
+                };
+            }
+
+            // Calculate total used
+            const totalUsed = Object.values(customer.monthlyUsage).reduce((sum, val) => sum + val, 0);
+            const remainingCredits = customer.totalCredits - totalUsed;
+            const usagePercent = (totalUsed / customer.totalCredits) * 100;
+
+            // Calculate MoM growth rate
+            let momGrowthRate = 0;
+            if (months.length >= 2) {
+                const growthRates = [];
+                for (let i = 1; i < months.length; i++) {
+                    const prevMonth = customer.monthlyUsage[months[i - 1]];
+                    const currMonth = customer.monthlyUsage[months[i]];
+                    if (prevMonth > 0) {
+                        const growth = ((currMonth - prevMonth) / prevMonth) * 100;
+                        growthRates.push(growth);
+                    }
+                }
+                momGrowthRate = growthRates.length > 0 
+                    ? growthRates.reduce((a, b) => a + b, 0) / growthRates.length 
+                    : 0;
+            }
+
+            // Project when credits will run out
+            const lastMonthUsage = customer.monthlyUsage[months[months.length - 1]];
+            let projectedMonthsRemaining = 'N/A';
+            let projectedDepletionDate = 'N/A';
+
+            if (lastMonthUsage > 0 && remainingCredits > 0) {
+                if (momGrowthRate > 0) {
+                    // With growth
+                    let remaining = remainingCredits;
+                    let monthlyUsage = lastMonthUsage;
+                    let monthsCount = 0;
+                    
+                    while (remaining > 0 && monthsCount < 100) {
+                        monthlyUsage = monthlyUsage * (1 + momGrowthRate / 100);
+                        remaining -= monthlyUsage;
+                        monthsCount++;
+                    }
+                    
+                    projectedMonthsRemaining = monthsCount;
+                } else {
+                    // Without growth (flat usage)
+                    projectedMonthsRemaining = Math.floor(remainingCredits / lastMonthUsage);
+                }
+
+                if (projectedMonthsRemaining !== 'N/A') {
+                    const depletionDate = new Date();
+                    depletionDate.setMonth(depletionDate.getMonth() + projectedMonthsRemaining);
+                    projectedDepletionDate = depletionDate.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+            }
+
+            return {
+                totalUsed,
+                remainingCredits,
+                usagePercent,
+                momGrowthRate,
+                projectedMonthsRemaining,
+                projectedDepletionDate,
+                lastMonthUsage
+            };
+        }
+
+        function getStatus(metrics) {
+            if (metrics.projectedMonthsRemaining === 'N/A') {
+                return 'healthy';
+            }
+            
+            const months = metrics.projectedMonthsRemaining;
+            if (months > 6) return 'healthy';
+            if (months > 3) return 'warning';
+            return 'critical';
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function openEditModal(customerIndex, field, currentValue, label) {
+            editingCustomer = customerIndex;
+            editingField = field;
+            document.getElementById('editModalTitle').textContent = `Edit ${label}`;
+            document.getElementById('editModalLabel').textContent = label;
+            document.getElementById('editModalInput').value = currentValue;
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            editingCustomer = null;
+            editingField = null;
+        }
+
+        function saveEdit() {
+            const newValue = parseFloat(document.getElementById('editModalInput').value);
+            
+            if (isNaN(newValue)) {
+                alert('Please enter a valid number');
+                return;
+            }
+
+            if (editingField === 'totalCredits' || editingField === 'arr') {
+                customersData[editingCustomer][editingField] = newValue;
+            } else {
+                // It's a monthly usage value
+                customersData[editingCustomer].monthlyUsage[editingField] = newValue;
+            }
+
+            saveDataToStorage();
+            renderDashboard();
+            closeEditModal();
+            showMessage('✅ Value updated successfully!', 'success');
+        }
+
+        function addNewMonth(customerIndex) {
+            const monthInput = prompt('Enter month (YYYY-MM format, e.g., 2024-11):');
+            if (!monthInput) return;
+
+            if (!monthInput.match(/^\d{4}-\d{2}$/)) {
+                alert('Invalid format. Please use YYYY-MM format (e.g., 2024-11)');
+                return;
+            }
+
+            const usageInput = prompt('Enter usage amount for ' + monthInput + ':');
+            if (usageInput === null) return;
+
+            const usage = parseFloat(usageInput);
+            if (isNaN(usage)) {
+                alert('Please enter a valid number');
+                return;
+            }
+
+            customersData[customerIndex].monthlyUsage[monthInput] = usage;
+            saveDataToStorage();
+            renderDashboard();
+            showMessage('✅ Month added successfully!', 'success');
+        }
+
+        function renderDashboard() {
+            const container = document.getElementById('dashboardContent');
+
+            if (customersData.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <h2>No Customer Data</h2>
+                        <p>Import your customer billing data from a CSV or Excel file to get started.</p>
+                        <p><strong>Your spreadsheet should include:</strong><br>
+                        Project ID, Company Name, ARR, Total Credits, SFDC Link, and monthly usage columns (format: YYYY-MM)</p>
+                        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                            <div class="upload-icon">📊</div>
+                            <h3>Click to Upload CSV or Excel File</h3>
+                            <p style="margin-top: 10px; color: #6b7280;">Or download the template to see the expected format</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = `
+                <div class="dashboard-grid">
+                    ${customersData.map((customer, index) => {
+                        const metrics = calculateMetrics(customer);
+                        const status = getStatus(metrics);
+                        const statusText = status === 'healthy' ? 'Healthy' : 
+                                         status === 'warning' ? 'Warning' : 'Critical';
+                        
+                        const months = Object.keys(customer.monthlyUsage).sort();
+                        const recentMonths = months.slice(-6); // Show last 6 months
+
+                        return `
+                            <div class="project-card">
+                                <div class="status-bar status-${status}"></div>
+                                
+                                <div class="project-header">
+                                    <div>
+                                        <div class="project-name">${customer.companyName || 'Unnamed Company'}</div>
+                                        <div class="project-id">${customer.projectId}</div>
+                                        ${customer.sfdcLink ? `<a href="${customer.sfdcLink}" target="_blank" class="sfdc-link">🔗 View in Salesforce</a>` : ''}
+                                    </div>
+                                    <div class="usage-badge badge-${status}">
+                                        ${statusText}
+                                    </div>
+                                </div>
+
+                                <div class="metrics">
+                                    <div class="metric">
+                                        <span class="metric-label">ARR</span>
+                                        <span class="metric-value">${formatCurrency(customer.arr)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Total Credits</span>
+                                        <span class="metric-value metric-value editable" onclick="openEditModal(${index}, 'totalCredits', ${customer.totalCredits}, 'Total Credits')">
+                                            ${formatCurrency(customer.totalCredits)}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Credits Used</span>
+                                        <span class="metric-value">${formatCurrency(metrics.totalUsed)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Remaining Credits</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : ''}">${formatCurrency(metrics.remainingCredits)}</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">MoM Growth Rate</span>
+                                        <span class="metric-value ${metrics.momGrowthRate > 10 ? 'warning' : ''}">${metrics.momGrowthRate.toFixed(1)}%</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Months Until Empty</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : status === 'warning' ? 'warning' : ''}">
+                                            ${metrics.projectedMonthsRemaining}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Projected Empty Date</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : ''}">${metrics.projectedDepletionDate}</span>
+                                    </div>
+                                </div>
+
+                                <div class="monthly-usage">
+                                    <div class="monthly-usage-title">
+                                        Recent Monthly Usage
+                                        <button class="btn btn-secondary" style="float: right; padding: 4px 10px; font-size: 11px;" onclick="addNewMonth(${index})">+ Add Month</button>
+                                    </div>
+                                    ${recentMonths.map(month => `
+                                        <div class="month-row">
+                                            <span class="month-label">${month}</span>
+                                            <span class="month-value" onclick="openEditModal(${index}, '${month}', ${customer.monthlyUsage[month]}, '${month} Usage')">
+                                                ${formatCurrency(customer.monthlyUsage[month])}
+                                            </span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+
+                                <div class="progress-bar-container">
+                                    <div class="progress-label">
+                                        <span>Credits Used</span>
+                                        <span><strong>${metrics.usagePercent.toFixed(1)}%</strong></span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill progress-${status}" style="width: ${Math.min(metrics.usagePercent, 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('editModal').addEventListener('click', (e) => {
+            if (e.target.id === 'editModal') {
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>
+
