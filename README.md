@@ -11,6 +11,20 @@ A simple, beautiful web dashboard to track Deepgram customer billing, credits, a
 - 🔄 Auto-refresh every 5 minutes (optional)
 - 🔐 Secure local storage of API credentials
 
+## ⚠️ Important: How to Run the Dashboard
+
+**Don't just double-click the HTML file!** It will cause a "Failed to fetch" error due to browser security restrictions.
+
+**Instead, do this:**
+1. Go to the `billing-dashboard` folder in Finder
+2. **Double-click `start-dashboard.command`** to launch the dashboard properly
+3. If prompted by macOS, click "Open" to allow it to run
+4. Your dashboard will open automatically in your browser
+
+Keep the terminal window open while using the dashboard. Press `Ctrl+C` to stop when done.
+
+---
+
 ## Quick Start
 
 ### Step 1: Get Your API Key
@@ -36,12 +50,30 @@ A simple, beautiful web dashboard to track Deepgram customer billing, credits, a
 
 3. **Enter your credentials**:
    - **Deepgram API Key**: Paste your API key
+   - **Authorization Scheme**: Select how your API key should be sent (Token, Bearer, API-Key, or Custom)
+   - **Custom Header Name** (if Custom selected): Enter the header name (e.g., `X-API-Key`)
    - **Project IDs**: Enter one project ID per line
    - **Project Names** (optional): Enter friendly names for each project (one per line, matching the order of project IDs)
 
 4. **Click "Save & Reload"**
 
 That's it! Your dashboard will now load and display all your customer billing information.
+
+## Authorization Schemes
+
+The dashboard supports multiple authorization methods to work with different API configurations:
+
+- **Token (default)**: Sends `Authorization: Token YOUR_API_KEY` - Standard Deepgram format
+- **Bearer**: Sends `Authorization: Bearer YOUR_API_KEY` - Common for OAuth and JWT tokens
+- **API-Key**: Sends `Authorization: API-Key YOUR_API_KEY` - Alternative API key format
+- **Custom Header**: Allows you to specify a custom header name
+  - With custom header name: Sends `X-Your-Header: YOUR_API_KEY`
+  - Without custom header name: Sends `Authorization: YOUR_API_KEY` (raw value)
+
+**When to use Custom Header:**
+- Your API requires a non-standard authorization header (e.g., `X-API-Key`, `X-Auth-Token`)
+- Your API key format includes the scheme already (e.g., `Bearer abc123`)
+- You need to match a specific authentication requirement
 
 ## Dashboard Metrics
 
@@ -115,6 +147,41 @@ function getStatus(usagePercent) {
 
 ## Troubleshooting
 
+### "Failed to fetch" Error (Most Common Issue)
+
+This error occurs when opening the HTML file directly from your file system due to browser CORS restrictions.
+
+**SOLUTION - Use the Launch Script (Easiest):**
+
+1. In Finder, go to the `billing-dashboard` folder
+2. **Double-click `start-dashboard.command`**
+3. If prompted, click "Open" to allow the script to run
+4. The dashboard will automatically open in your browser
+5. The terminal window will stay open - **don't close it** while using the dashboard
+6. Press `Ctrl+C` in the terminal to stop the server when done
+
+**Alternative Solutions:**
+
+**Option A - Use Terminal:**
+```bash
+cd ~/billing-dashboard
+python3 -m http.server 8000
+```
+Then open: http://localhost:8000/dashboard.html
+
+**Option B - Use a different browser:**
+- Some browsers like Firefox may have less strict CORS policies for local files
+- Try opening the HTML file in different browsers
+
+**Option C - Disable CORS (Chrome - Temporary, for testing only):**
+1. Close ALL Chrome windows completely
+2. Open Terminal and run:
+   ```bash
+   open -na "Google Chrome" --args --disable-web-security --user-data-dir="/tmp/chrome_dev"
+   ```
+3. Open the dashboard.html file
+4. **⚠️ Only use this for testing, not regular browsing**
+
 ### Dashboard shows "Please configure your API key..."
 
 - Click Settings and ensure you've entered your API key and at least one project ID
@@ -123,8 +190,10 @@ function getStatus(usagePercent) {
 ### Error loading projects
 
 - **401 Unauthorized**: Check that your API key is correct and has the necessary permissions
+- **403 Forbidden**: Your API key may not have access to the specified project
 - **404 Not Found**: Verify that your project IDs are correct
 - **Network Error**: Check your internet connection
+- **Failed to fetch**: See "Failed to fetch" section above
 
 ### No data showing
 
@@ -179,3 +248,4 @@ This dashboard is provided as-is for your use. Feel free to modify it to suit yo
 ---
 
 **Need help?** Open the `dashboard.html` file in a text editor to customize or troubleshoot.
+
