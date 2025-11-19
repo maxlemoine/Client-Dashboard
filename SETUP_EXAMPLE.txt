@@ -20,6 +20,19 @@ STEP 3: Fill in the form like this:
 
 
 ┌─────────────────────────────────────────────────────┐
+│ Authorization Scheme                                │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ Token (default)                             [▼] │ │
+│ └─────────────────────────────────────────────────┘ │
+│ Select how the API key should be sent              │
+│ (Token, Bearer, API-Key, or Custom Header)          │
+└─────────────────────────────────────────────────────┘
+
+NOTE: Most users should keep "Token (default)" selected.
+      Only change this if you have custom authentication requirements.
+
+
+┌─────────────────────────────────────────────────────┐
 │ Project IDs (one per line)                          │
 │ ┌─────────────────────────────────────────────────┐ │
 │ │ 12345678-1234-1234-1234-123456789abc           │ │
@@ -76,3 +89,4 @@ TIPS:
 ✓ You can update Settings at any time by clicking the Settings button
 
 ═══════════════════════════════════════════════════════
+
