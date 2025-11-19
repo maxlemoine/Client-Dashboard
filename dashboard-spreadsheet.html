@@ -172,6 +172,10 @@
             background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
         }
 
+        .status-orange {
+            background: linear-gradient(90deg, #f97316 0%, #fb923c 100%);
+        }
+
         .project-header {
             display: flex;
             justify-content: space-between;
@@ -223,6 +227,10 @@
 
         .badge-critical {
             background: #ef4444;
+        }
+
+        .badge-orange {
+            background: #f97316;
         }
 
         .metrics {
@@ -348,6 +356,10 @@
 
         .progress-critical {
             background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+
+        .progress-orange {
+            background: linear-gradient(90deg, #f97316 0%, #fb923c 100%);
         }
 
         .edit-modal {
@@ -546,7 +558,9 @@
                             projectId: row['Project ID'] || row['project_id'] || '',
                             companyName: row['Company Name'] || row['company_name'] || '',
                             arr: parseFloat(row['ARR'] || row['arr'] || 0),
-                            totalCredits: parseFloat(row['Total Credits'] || row['total_credits'] || 0),
+                            startingBalance: parseFloat(row['Starting Balance'] || row['starting_balance'] || 0),
+                            startDate: row['Start Date'] || row['start_date'] || '',
+                            creditsRemaining: parseFloat(row['Total Credits Remaining'] || row['credits_remaining'] || row['Total Credits'] || 0),
                             sfdcLink: row['SFDC Link'] || row['sfdc_link'] || '',
                             monthlyUsage: {}
                         };
@@ -554,10 +568,10 @@
                         // Parse monthly usage columns
                         for (let key in row) {
                             if (key.match(/^\d{4}-\d{2}$/)) {
-                                // Format: 2024-01, 2024-02, etc.
+                                // Format: 2025-06, 2025-07, etc.
                                 customer.monthlyUsage[key] = parseFloat(row[key] || 0);
                             } else if (key.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i)) {
-                                // Format: Jan 2024, Feb 2024, etc.
+                                // Format: Jan 2025, Feb 2025, etc.
                                 const date = new Date(key);
                                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                                 customer.monthlyUsage[monthKey] = parseFloat(row[key] || 0);
@@ -587,27 +601,31 @@
                     'Project ID': 'proj-abc123',
                     'Company Name': 'Acme Corporation',
                     'ARR': 50000,
-                    'Total Credits': 100000,
+                    'Starting Balance': 100000,
+                    'Start Date': '2025-01-01',
+                    'Total Credits Remaining': 45000,
                     'SFDC Link': 'https://salesforce.com/account/123',
-                    '2024-01': 5000,
-                    '2024-02': 5500,
-                    '2024-03': 6000,
-                    '2024-04': 6500,
-                    '2024-05': 7000,
-                    '2024-06': 7500
+                    '2025-06': 8000,
+                    '2025-07': 8500,
+                    '2025-08': 9000,
+                    '2025-09': 9500,
+                    '2025-10': 10000,
+                    '2025-11': 6500
                 },
                 {
                     'Project ID': 'proj-def456',
                     'Company Name': 'TechStart Inc',
                     'ARR': 75000,
-                    'Total Credits': 150000,
+                    'Starting Balance': 150000,
+                    'Start Date': '2025-02-15',
+                    'Total Credits Remaining': 75000,
                     'SFDC Link': 'https://salesforce.com/account/456',
-                    '2024-01': 8000,
-                    '2024-02': 8500,
-                    '2024-03': 9000,
-                    '2024-04': 9500,
-                    '2024-05': 10000,
-                    '2024-06': 10500
+                    '2025-06': 12000,
+                    '2025-07': 13000,
+                    '2025-08': 14000,
+                    '2025-09': 15000,
+                    '2025-10': 16000,
+                    '2025-11': 9000
                 }
             ];
 
@@ -628,7 +646,9 @@
                     'Project ID': customer.projectId,
                     'Company Name': customer.companyName,
                     'ARR': customer.arr,
-                    'Total Credits': customer.totalCredits,
+                    'Starting Balance': customer.startingBalance,
+                    'Start Date': customer.startDate,
+                    'Total Credits Remaining': customer.creditsRemaining,
                     'SFDC Link': customer.sfdcLink
                 };
 
@@ -657,98 +677,132 @@
         }
 
         function calculateMetrics(customer) {
+            // Current date: November 18, 2025
+            const TODAY = new Date('2025-11-18');
+            
             // Get all months sorted
             const months = Object.keys(customer.monthlyUsage).sort();
             
             if (months.length === 0) {
                 return {
                     totalUsed: 0,
-                    remainingCredits: customer.totalCredits,
+                    remainingCredits: customer.creditsRemaining,
                     usagePercent: 0,
-                    momGrowthRate: 0,
-                    projectedMonthsRemaining: 'N/A',
+                    dailyRate: 0,
+                    dodGrowthRate: 0,
+                    projectedDaysRemaining: 'N/A',
                     projectedDepletionDate: 'N/A',
-                    lastMonthUsage: 0
+                    startingBalance: customer.startingBalance || 0
                 };
             }
 
-            // Calculate total used
-            const totalUsed = Object.values(customer.monthlyUsage).reduce((sum, val) => sum + val, 0);
-            const remainingCredits = customer.totalCredits - totalUsed;
-            const usagePercent = (totalUsed / customer.totalCredits) * 100;
+            // Calculate total used from monthly data
+            const totalUsedFromMonthly = Object.values(customer.monthlyUsage).reduce((sum, val) => sum + val, 0);
+            
+            // Use creditsRemaining from spreadsheet (as of Nov 18, 2025)
+            const remainingCredits = customer.creditsRemaining;
+            const startingBalance = customer.startingBalance || (remainingCredits + totalUsedFromMonthly);
+            const usagePercent = startingBalance > 0 ? ((startingBalance - remainingCredits) / startingBalance) * 100 : 0;
 
-            // Calculate MoM growth rate
-            let momGrowthRate = 0;
-            if (months.length >= 2) {
+            // Helper function to get days in a month
+            function getDaysInMonth(yearMonth) {
+                const [year, month] = yearMonth.split('-').map(Number);
+                return new Date(year, month, 0).getDate();
+            }
+
+            // Calculate daily rate for each month
+            const dailyRates = [];
+            for (let month of months) {
+                const monthlyTotal = customer.monthlyUsage[month];
+                let daysInPeriod;
+                
+                // Special handling for November 2025 (partial month - only Nov 1-18)
+                if (month === '2025-11') {
+                    daysInPeriod = 18;
+                } else {
+                    daysInPeriod = getDaysInMonth(month);
+                }
+                
+                const dailyRate = monthlyTotal / daysInPeriod;
+                dailyRates.push({
+                    month: month,
+                    dailyRate: dailyRate,
+                    monthlyTotal: monthlyTotal,
+                    days: daysInPeriod
+                });
+            }
+
+            // Calculate day-over-day (DoD) growth rate from daily rates
+            let dodGrowthRate = 0;
+            if (dailyRates.length >= 2) {
                 const growthRates = [];
-                for (let i = 1; i < months.length; i++) {
-                    const prevMonth = customer.monthlyUsage[months[i - 1]];
-                    const currMonth = customer.monthlyUsage[months[i]];
-                    if (prevMonth > 0) {
-                        const growth = ((currMonth - prevMonth) / prevMonth) * 100;
+                for (let i = 1; i < dailyRates.length; i++) {
+                    const prevDailyRate = dailyRates[i - 1].dailyRate;
+                    const currDailyRate = dailyRates[i].dailyRate;
+                    if (prevDailyRate > 0) {
+                        const growth = ((currDailyRate - prevDailyRate) / prevDailyRate) * 100;
                         growthRates.push(growth);
                     }
                 }
-                momGrowthRate = growthRates.length > 0 
+                dodGrowthRate = growthRates.length > 0 
                     ? growthRates.reduce((a, b) => a + b, 0) / growthRates.length 
                     : 0;
             }
 
-            // Project when credits will run out
-            const lastMonthUsage = customer.monthlyUsage[months[months.length - 1]];
-            let projectedMonthsRemaining = 'N/A';
+            // Current daily rate (most recent month)
+            const currentDailyRate = dailyRates[dailyRates.length - 1].dailyRate;
+
+            // Project when credits will run out using daily rates with DoD growth
+            let projectedDaysRemaining = 'N/A';
             let projectedDepletionDate = 'N/A';
 
-            if (lastMonthUsage > 0 && remainingCredits > 0) {
-                if (momGrowthRate > 0) {
-                    // With growth
-                    let remaining = remainingCredits;
-                    let monthlyUsage = lastMonthUsage;
-                    let monthsCount = 0;
-                    
-                    while (remaining > 0 && monthsCount < 100) {
-                        monthlyUsage = monthlyUsage * (1 + momGrowthRate / 100);
-                        remaining -= monthlyUsage;
-                        monthsCount++;
-                    }
-                    
-                    projectedMonthsRemaining = monthsCount;
-                } else {
-                    // Without growth (flat usage)
-                    projectedMonthsRemaining = Math.floor(remainingCredits / lastMonthUsage);
+            if (currentDailyRate > 0 && remainingCredits > 0) {
+                let remaining = remainingCredits;
+                let dailyRate = currentDailyRate;
+                let daysCount = 0;
+                const dailyGrowthMultiplier = 1 + (dodGrowthRate / 100);
+                
+                // Project day by day until credits run out (max 3650 days = 10 years)
+                while (remaining > 0 && daysCount < 3650) {
+                    remaining -= dailyRate;
+                    dailyRate = dailyRate * dailyGrowthMultiplier;
+                    daysCount++;
                 }
+                
+                projectedDaysRemaining = daysCount;
 
-                if (projectedMonthsRemaining !== 'N/A') {
-                    const depletionDate = new Date();
-                    depletionDate.setMonth(depletionDate.getMonth() + projectedMonthsRemaining);
-                    projectedDepletionDate = depletionDate.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                }
+                // Calculate the actual depletion date
+                const depletionDate = new Date(TODAY);
+                depletionDate.setDate(depletionDate.getDate() + daysCount);
+                projectedDepletionDate = depletionDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
             }
 
             return {
-                totalUsed,
+                totalUsed: startingBalance - remainingCredits,
                 remainingCredits,
                 usagePercent,
-                momGrowthRate,
-                projectedMonthsRemaining,
+                dailyRate: currentDailyRate,
+                dodGrowthRate,
+                projectedDaysRemaining,
                 projectedDepletionDate,
-                lastMonthUsage
+                startingBalance
             };
         }
 
         function getStatus(metrics) {
-            if (metrics.projectedMonthsRemaining === 'N/A') {
+            if (metrics.projectedDaysRemaining === 'N/A') {
                 return 'healthy';
             }
             
-            const months = metrics.projectedMonthsRemaining;
-            if (months > 6) return 'healthy';
-            if (months > 3) return 'warning';
-            return 'critical';
+            const days = metrics.projectedDaysRemaining;
+            if (days >= 120) return 'healthy';      // Green: 120+ days (4+ months)
+            if (days >= 90) return 'warning';       // Yellow: 90-120 days (3-4 months)
+            if (days >= 45) return 'orange';        // Orange: 45-90 days (1.5-3 months)
+            return 'critical';                      // Red: <45 days
         }
 
         function formatCurrency(amount) {
@@ -783,7 +837,7 @@
                 return;
             }
 
-            if (editingField === 'totalCredits' || editingField === 'arr') {
+            if (editingField === 'startingBalance' || editingField === 'creditsRemaining' || editingField === 'arr') {
                 customersData[editingCustomer][editingField] = newValue;
             } else {
                 // It's a monthly usage value
@@ -829,7 +883,10 @@
                         <h2>No Customer Data</h2>
                         <p>Import your customer billing data from a CSV or Excel file to get started.</p>
                         <p><strong>Your spreadsheet should include:</strong><br>
-                        Project ID, Company Name, ARR, Total Credits, SFDC Link, and monthly usage columns (format: YYYY-MM)</p>
+                        Project ID, Company Name, ARR, Starting Balance, Start Date, Total Credits Remaining, SFDC Link, and monthly usage columns (format: YYYY-MM)</p>
+                        <p style="margin-top: 10px; font-size: 14px; color: #6b7280;">
+                        <strong>Monthly columns:</strong> Use YYYY-MM format (e.g., 2025-06, 2025-11)<br>
+                        Note: 2025-11 should be partial (Nov 1-18 only, 18 days)</p>
                         <div class="upload-area" onclick="document.getElementById('fileInput').click()">
                             <div class="upload-icon">📊</div>
                             <h3>Click to Upload CSV or Excel File</h3>
@@ -846,7 +903,8 @@
                         const metrics = calculateMetrics(customer);
                         const status = getStatus(metrics);
                         const statusText = status === 'healthy' ? 'Healthy' : 
-                                         status === 'warning' ? 'Warning' : 'Critical';
+                                         status === 'warning' ? 'Warning' : 
+                                         status === 'orange' ? 'Caution' : 'Critical';
                         
                         const months = Object.keys(customer.monthlyUsage).sort();
                         const recentMonths = months.slice(-6); // Show last 6 months
@@ -873,9 +931,9 @@
                                     </div>
                                     
                                     <div class="metric">
-                                        <span class="metric-label">Total Credits</span>
-                                        <span class="metric-value metric-value editable" onclick="openEditModal(${index}, 'totalCredits', ${customer.totalCredits}, 'Total Credits')">
-                                            ${formatCurrency(customer.totalCredits)}
+                                        <span class="metric-label">Starting Balance</span>
+                                        <span class="metric-value metric-value editable" onclick="openEditModal(${index}, 'startingBalance', ${customer.startingBalance}, 'Starting Balance')">
+                                            ${formatCurrency(customer.startingBalance)}
                                         </span>
                                     </div>
                                     
@@ -886,24 +944,31 @@
                                     
                                     <div class="metric">
                                         <span class="metric-label">Remaining Credits</span>
-                                        <span class="metric-value ${status === 'critical' ? 'critical' : ''}">${formatCurrency(metrics.remainingCredits)}</span>
+                                        <span class="metric-value metric-value editable ${status === 'critical' || status === 'orange' ? 'critical' : ''}" onclick="openEditModal(${index}, 'creditsRemaining', ${customer.creditsRemaining}, 'Remaining Credits')">
+                                            ${formatCurrency(metrics.remainingCredits)}
+                                        </span>
                                     </div>
                                     
                                     <div class="metric">
-                                        <span class="metric-label">MoM Growth Rate</span>
-                                        <span class="metric-value ${metrics.momGrowthRate > 10 ? 'warning' : ''}">${metrics.momGrowthRate.toFixed(1)}%</span>
+                                        <span class="metric-label">Daily Run Rate</span>
+                                        <span class="metric-value">${formatCurrency(metrics.dailyRate)}/day</span>
                                     </div>
                                     
                                     <div class="metric">
-                                        <span class="metric-label">Months Until Empty</span>
-                                        <span class="metric-value ${status === 'critical' ? 'critical' : status === 'warning' ? 'warning' : ''}">
-                                            ${metrics.projectedMonthsRemaining}
+                                        <span class="metric-label">DoD Growth Rate</span>
+                                        <span class="metric-value ${metrics.dodGrowthRate > 5 ? 'warning' : ''}">${metrics.dodGrowthRate.toFixed(2)}%</span>
+                                    </div>
+                                    
+                                    <div class="metric">
+                                        <span class="metric-label">Days Until Empty</span>
+                                        <span class="metric-value ${status === 'critical' ? 'critical' : status === 'orange' ? 'warning' : status === 'warning' ? 'warning' : ''}">
+                                            ${metrics.projectedDaysRemaining}
                                         </span>
                                     </div>
                                     
                                     <div class="metric">
                                         <span class="metric-label">Projected Empty Date</span>
-                                        <span class="metric-value ${status === 'critical' ? 'critical' : ''}">${metrics.projectedDepletionDate}</span>
+                                        <span class="metric-value ${status === 'critical' || status === 'orange' ? 'critical' : ''}">${metrics.projectedDepletionDate}</span>
                                     </div>
                                 </div>
 
