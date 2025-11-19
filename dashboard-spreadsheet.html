@@ -457,9 +457,193 @@
             margin-bottom: 15px;
         }
 
+        /* Table View Styles */
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .customers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .customers-table th {
+            background: #f9fafb;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .customers-table th:hover {
+            background: #f3f4f6;
+        }
+
+        .customers-table th.sortable::after {
+            content: ' ⇅';
+            color: #9ca3af;
+        }
+
+        .customers-table th.sorted-asc::after {
+            content: ' ▲';
+            color: #667eea;
+        }
+
+        .customers-table th.sorted-desc::after {
+            content: ' ▼';
+            color: #667eea;
+        }
+
+        .customers-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .customers-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 5px;
+            color: #667eea;
+            transition: transform 0.2s;
+        }
+
+        .expand-btn.expanded {
+            transform: rotate(90deg);
+        }
+
+        .expanded-row {
+            background: #f9fafb;
+        }
+
+        .expanded-content {
+            padding: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .expanded-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .expanded-metric {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .expanded-metric-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .expanded-metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .monthly-hours-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .monthly-hours-table th {
+            background: white;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #6b7280;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .monthly-hours-table td {
+            padding: 8px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .table-status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-dot-healthy {
+            background: #10b981;
+        }
+
+        .status-dot-warning {
+            background: #f59e0b;
+        }
+
+        .status-dot-orange {
+            background: #f97316;
+        }
+
+        .status-dot-critical {
+            background: #ef4444;
+        }
+
+        .table-editable {
+            cursor: pointer;
+            border-bottom: 1px dashed #667eea;
+            color: #667eea;
+        }
+
+        .table-editable:hover {
+            background: #e0e7ff;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                padding: 10px;
+            }
+
+            .customers-table {
+                font-size: 12px;
+            }
+
+            .customers-table th,
+            .customers-table td {
+                padding: 8px 4px;
             }
         }
     </style>
@@ -507,6 +691,10 @@
         let customersData = [];
         let editingCustomer = null;
         let editingField = null;
+        let viewMode = localStorage.getItem('view_mode') || 'table'; // 'cards' or 'table'
+        let expandedRows = new Set();
+        let sortColumn = 'daysRemaining';
+        let sortDirection = 'asc';
 
         // Load data from localStorage on page load
         window.addEventListener('DOMContentLoaded', () => {
@@ -566,16 +754,23 @@
                             monthlyUsage: {}
                         };
 
-                        // Parse monthly usage columns
+                        // Parse monthly usage columns - be more explicit
                         for (let key in row) {
-                            if (key.match(/^\d{4}-\d{2}$/)) {
+                            const trimmedKey = key.trim();
+                            if (trimmedKey.match(/^\d{4}-\d{2}$/)) {
                                 // Format: 2025-06, 2025-07, etc.
-                                customer.monthlyUsage[key] = parseFloat(row[key] || 0);
-                            } else if (key.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i)) {
+                                const value = row[key];
+                                if (value !== null && value !== undefined && value !== '') {
+                                    customer.monthlyUsage[trimmedKey] = parseFloat(value);
+                                }
+                            } else if (trimmedKey.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/i)) {
                                 // Format: Jan 2025, Feb 2025, etc.
-                                const date = new Date(key);
+                                const date = new Date(trimmedKey);
                                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                                customer.monthlyUsage[monthKey] = parseFloat(row[key] || 0);
+                                const value = row[key];
+                                if (value !== null && value !== undefined && value !== '') {
+                                    customer.monthlyUsage[monthKey] = parseFloat(value);
+                                }
                             }
                         }
 
@@ -892,6 +1087,235 @@
             showMessage('✅ Month added successfully!', 'success');
         }
 
+        function toggleViewMode(mode) {
+            viewMode = mode;
+            localStorage.setItem('view_mode', mode);
+            renderDashboard();
+        }
+
+        function toggleRowExpansion(index) {
+            if (expandedRows.has(index)) {
+                expandedRows.delete(index);
+            } else {
+                expandedRows.add(index);
+            }
+            renderDashboard();
+        }
+
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            renderDashboard();
+        }
+
+        function getSortedCustomers() {
+            const customersWithMetrics = customersData.map((customer, index) => ({
+                customer,
+                index,
+                metrics: calculateMetrics(customer),
+                status: getStatus(calculateMetrics(customer))
+            }));
+
+            return customersWithMetrics.sort((a, b) => {
+                let aVal, bVal;
+
+                switch (sortColumn) {
+                    case 'companyName':
+                        aVal = a.customer.companyName.toLowerCase();
+                        bVal = b.customer.companyName.toLowerCase();
+                        break;
+                    case 'remainingCredits':
+                        aVal = a.metrics.remainingCredits;
+                        bVal = b.metrics.remainingCredits;
+                        break;
+                    case 'daysRemaining':
+                        aVal = a.metrics.projectedDaysRemaining === 'N/A' ? 999999 : a.metrics.projectedDaysRemaining;
+                        bVal = b.metrics.projectedDaysRemaining === 'N/A' ? 999999 : b.metrics.projectedDaysRemaining;
+                        break;
+                    case 'status':
+                        const statusOrder = { critical: 0, orange: 1, warning: 2, healthy: 3 };
+                        aVal = statusOrder[a.status];
+                        bVal = statusOrder[b.status];
+                        break;
+                    case 'arr':
+                        aVal = a.customer.arr;
+                        bVal = b.customer.arr;
+                        break;
+                    case 'perHourRate':
+                        aVal = a.customer.perHourRate;
+                        bVal = b.customer.perHourRate;
+                        break;
+                    case 'dailyCost':
+                        aVal = a.metrics.dailyCost;
+                        bVal = b.metrics.dailyCost;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (typeof aVal === 'string') {
+                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                } else {
+                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+            });
+        }
+
+        function renderTableView() {
+            const sortedCustomers = getSortedCustomers();
+            
+            let html = `
+                <div class="view-toggle">
+                    <button class="btn btn-secondary" onclick="toggleViewMode('cards')">📊 Card View</button>
+                    <button class="btn btn-primary" onclick="toggleViewMode('table')">📋 Table View</button>
+                </div>
+                <div class="table-container">
+                    <table class="customers-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;"></th>
+                                <th class="sortable ${sortColumn === 'companyName' ? 'sorted-' + sortDirection : ''}" onclick="sortTable('companyName')">Company</th>
+                                <th class="sortable ${sortColumn === 'remainingCredits' ? 'sorted-' + sortDirection : ''}" onclick="sortTable('remainingCredits')">Credits Left</th>
+                                <th class="sortable ${sortColumn === 'daysRemaining' ? 'sorted-' + sortDirection : ''}" onclick="sortTable('daysRemaining')">Days Left</th>
+                                <th class="sortable ${sortColumn === 'status' ? 'sorted-' + sortDirection : ''}" onclick="sortTable('status')">Status</th>
+                                <th>Projected Date</th>
+                                <th class="sortable ${sortColumn === 'dailyCost' ? 'sorted-' + sortDirection : ''}" onclick="sortTable('dailyCost')">Daily Cost</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            sortedCustomers.forEach(({ customer, index, metrics, status }) => {
+                const isExpanded = expandedRows.has(index);
+                const statusText = status === 'healthy' ? 'Healthy' : 
+                                 status === 'warning' ? 'Warning' : 
+                                 status === 'orange' ? 'Caution' : 'Critical';
+
+                html += `
+                    <tr>
+                        <td>
+                            <button class="expand-btn ${isExpanded ? 'expanded' : ''}" onclick="toggleRowExpansion(${index})">▶</button>
+                        </td>
+                        <td>
+                            <strong>${customer.companyName || 'Unnamed'}</strong><br>
+                            <small style="color: #6b7280;">${customer.projectId}</small>
+                        </td>
+                        <td>
+                            <span class="table-editable" onclick="openEditModal(${index}, 'creditsRemaining', ${customer.creditsRemaining}, 'Remaining Credits')">
+                                ${formatCurrency(metrics.remainingCredits)}
+                            </span>
+                        </td>
+                        <td>
+                            <strong style="color: ${status === 'critical' || status === 'orange' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#10b981'}">
+                                ${metrics.projectedDaysRemaining}
+                            </strong>
+                        </td>
+                        <td>
+                            <span class="table-status-dot status-dot-${status}"></span>
+                            ${statusText}
+                        </td>
+                        <td>${metrics.projectedDepletionDate}</td>
+                        <td>${formatCurrency(metrics.dailyCost)}/day</td>
+                        <td>
+                            ${customer.sfdcLink ? `<a href="${customer.sfdcLink}" target="_blank" style="color: #667eea; text-decoration: none;">🔗 SFDC</a>` : ''}
+                        </td>
+                    </tr>
+                `;
+
+                if (isExpanded) {
+                    const months = Object.keys(customer.monthlyUsage).sort();
+                    const recentMonths = months.slice(-6);
+
+                    html += `
+                        <tr class="expanded-row">
+                            <td colspan="8">
+                                <div class="expanded-content">
+                                    <div class="expanded-grid">
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">ARR</div>
+                                            <div class="expanded-metric-value">${formatCurrency(customer.arr)}</div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">Starting Balance</div>
+                                            <div class="expanded-metric-value table-editable" onclick="openEditModal(${index}, 'startingBalance', ${customer.startingBalance}, 'Starting Balance')">
+                                                ${formatCurrency(customer.startingBalance)}
+                                            </div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">Per Hour Rate</div>
+                                            <div class="expanded-metric-value table-editable" onclick="openEditModal(${index}, 'perHourRate', ${customer.perHourRate}, 'Per Hour Rate')">
+                                                ${formatCurrency(customer.perHourRate)}/hr
+                                            </div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">Total Hours Used</div>
+                                            <div class="expanded-metric-value">${metrics.totalHoursUsed.toLocaleString()} hrs</div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">Total Cost Used</div>
+                                            <div class="expanded-metric-value">${formatCurrency(metrics.totalCostUsed)}</div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">Daily Hours</div>
+                                            <div class="expanded-metric-value">${metrics.dailyHours.toFixed(1)} hrs/day</div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">DoD Growth Rate</div>
+                                            <div class="expanded-metric-value" style="color: ${metrics.dodGrowthRate > 5 ? '#f59e0b' : '#1f2937'}">
+                                                ${metrics.dodGrowthRate.toFixed(2)}%
+                                            </div>
+                                        </div>
+                                        <div class="expanded-metric">
+                                            <div class="expanded-metric-label">Usage %</div>
+                                            <div class="expanded-metric-value">${metrics.usagePercent.toFixed(1)}%</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: 15px;">
+                                        <h4 style="margin-bottom: 10px; color: #374151;">
+                                            Recent Monthly Hours
+                                            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; margin-left: 10px;" onclick="addNewMonth(${index})">+ Add Month</button>
+                                        </h4>
+                                        <table class="monthly-hours-table">
+                                            <thead>
+                                                <tr>
+                                                    ${recentMonths.map(month => `<th>${month}</th>`).join('')}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    ${recentMonths.map(month => `
+                                                        <td>
+                                                            <span class="table-editable" onclick="openEditModal(${index}, '${month}', ${customer.monthlyUsage[month]}, '${month} Hours')">
+                                                                ${customer.monthlyUsage[month].toLocaleString()} hrs
+                                                            </span>
+                                                        </td>
+                                                    `).join('')}
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            return html;
+        }
+
         function renderDashboard() {
             const container = document.getElementById('dashboardContent');
 
@@ -916,7 +1340,18 @@
                 return;
             }
 
+            // Render based on view mode
+            if (viewMode === 'table') {
+                container.innerHTML = renderTableView();
+                return;
+            }
+
+            // Card view (original)
             const html = `
+                <div class="view-toggle">
+                    <button class="btn btn-primary" onclick="toggleViewMode('cards')">📊 Card View</button>
+                    <button class="btn btn-secondary" onclick="toggleViewMode('table')">📋 Table View</button>
+                </div>
                 <div class="dashboard-grid">
                     ${customersData.map((customer, index) => {
                         const metrics = calculateMetrics(customer);
