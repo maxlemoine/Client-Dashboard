@@ -1022,9 +1022,38 @@
             return new Intl.NumberFormat('en-US', {
                 style: 'currency',
                 currency: 'USD',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             }).format(amount);
+        }
+
+        function formatRate(rate) {
+            // Format rates with appropriate precision for fractional cents
+            if (rate < 0.01) {
+                // Less than 1 cent - show up to 4 decimal places (e.g., $0.0250)
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 4
+                }).format(rate);
+            } else if (rate < 1) {
+                // Between 1 cent and $1 - show 2-3 decimals (e.g., $0.025 or $0.58)
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 3
+                }).format(rate);
+            } else {
+                // $1 or more - show 2 decimals (e.g., $5.50)
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(rate);
+            }
         }
 
         function openEditModal(customerIndex, field, currentValue, label) {
@@ -1249,7 +1278,7 @@
                                         <div class="expanded-metric">
                                             <div class="expanded-metric-label">Per Hour Rate</div>
                                             <div class="expanded-metric-value table-editable" onclick="openEditModal(${index}, 'perHourRate', ${customer.perHourRate}, 'Per Hour Rate')">
-                                                ${formatCurrency(customer.perHourRate)}/hr
+                                                ${formatRate(customer.perHourRate)}/hr
                                             </div>
                                         </div>
                                         <div class="expanded-metric">
@@ -1401,7 +1430,7 @@
                                     <div class="metric">
                                         <span class="metric-label">Per Hour Rate</span>
                                         <span class="metric-value metric-value editable" onclick="openEditModal(${index}, 'perHourRate', ${customer.perHourRate}, 'Per Hour Rate')">
-                                            ${formatCurrency(customer.perHourRate)}/hr
+                                            ${formatRate(customer.perHourRate)}/hr
                                         </span>
                                     </div>
                                     
